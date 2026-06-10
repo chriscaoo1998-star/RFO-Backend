@@ -1,22 +1,29 @@
 from flask import Flask, request, jsonify
-import base64, io, os, sys
+import base64, io, os
 
 app = Flask(__name__)
 
-# Allow CORS from anywhere
 @app.after_request
 def add_cors(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Accept'
     return response
 
-@app.route('/process', methods=['OPTIONS', 'POST'])
+@app.route('/', methods=['GET'])
+def index():
+    return jsonify({'status': 'RFO Generator Backend Running'})
+
+@app.route('/health', methods=['GET', 'OPTIONS'])
+def health():
+    return jsonify({'status': 'ok'})
+
+@app.route('/process', methods=['POST', 'OPTIONS'])
 def process():
     if request.method == 'OPTIONS':
-        return '', 200
+        return jsonify({'status': 'ok'}), 200
     try:
-        data = request.get_json()
+        data = request.get_json(force=True)
         pdf_bytes = base64.b64decode(data['pdf'])
         from processor import process_profile
         result = process_profile(io.BytesIO(pdf_bytes))
@@ -26,10 +33,6 @@ def process():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-@app.route('/health', methods=['GET'])
-def health():
-    return jsonify({'status': 'ok'})
-
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5050))
-    app.run(host='0.0.0.0', port=port)
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port, debug=False)
